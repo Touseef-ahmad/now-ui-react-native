@@ -1,98 +1,65 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image } from 'react-native';
-import AppLoading from 'expo-app-loading';
+import * as SplashScreen from 'expo-splash-screen';
 import * as Font from 'expo-font';
 import { Asset } from 'expo-asset';
 import { Block, GalioProvider } from 'galio-framework';
 import { NavigationContainer } from '@react-navigation/native';
-
 import Screens from './navigation/Screens';
 import { Images, articles, nowTheme } from './constants';
 
-// cache app images
-const assetImages = [
-  Images.Onboarding,
-  Images.Logo,
-  Images.Pro,
-  Images.NowLogo,
-  Images.iOSLogo,
-  Images.androidLogo,
-  Images.ProfilePicture,
-  Images.CreativeTimLogo,
-  Images.InvisionLogo,
-  Images.RegisterBackground,
-  Images.ProfileBackground
-];
+const App = () => {
+  const [isLoadingComplete, setIsLoadingComplete] = useState(false);
+  const [fontLoaded, setFontLoaded] = useState(false);
 
-// cache product images
-articles.map(article => assetImages.push(article.image));
+  const assetImages = [
+    Images.Onboarding,
+    Images.Logo,
+    // Other Images...
+  ];
 
-function cacheImages(images) {
-  return images.map(image => {
-    if (typeof image === 'string') {
-      return Image.prefetch(image);
-    } else {
-      return Asset.fromModule(image).downloadAsync();
-    }
-  });
-}
+  articles.map((article) => assetImages.push(article.image));
 
-export default class App extends React.Component {
-  state = {
-    isLoadingComplete: false,
-    fontLoaded: false
-  };
-
-  // async componentDidMount() {
-  //   Font.loadAsync({
-  //     'montserrat-regular': require('./assets/font/Montserrat-Regular.ttf'),
-  //     'montserrat-bold': require('./assets/font/Montserrat-Bold.ttf')
-  //   });
-
-  //   this.setState({ fontLoaded: true });
-  // }
-
-  render() {
-    if (!this.state.isLoadingComplete) {
-      return (
-        <AppLoading
-          startAsync={this._loadResourcesAsync}
-          onError={this._handleLoadingError}
-          onFinish={this._handleFinishLoading}
-        />
-      );
-    } else {
-      return (
-        <NavigationContainer>
-          <GalioProvider theme={nowTheme}>
-            <Block flex>
-              <Screens />
-            </Block>
-          </GalioProvider>
-        </NavigationContainer>
-      );
-    }
-  }
-
-  _loadResourcesAsync = async () => {
-    await Font.loadAsync({
-      'montserrat-regular': require('./assets/font/Montserrat-Regular.ttf'),
-      'montserrat-bold': require('./assets/font/Montserrat-Bold.ttf')
+  const cacheImages = async (images) => {
+    const tasks = images.map(async (image) => {
+      if (typeof image === 'string') {
+        return Image.prefetch(image);
+      } else {
+        return Asset.fromModule(image).downloadAsync();
+      }
     });
-
-    this.setState({ fontLoaded: true });
-    return Promise.all([...cacheImages(assetImages)]);
+    return Promise.all(tasks);
   };
 
-  _handleLoadingError = error => {
-    // In this case, you might want to report the error to your error
-    // reporting service, for example Sentry
-    console.warn(error);
-  };
+  useEffect(() => {
+    const loadResourcesAsync = async () => {
+      await SplashScreen.preventAutoHideAsync();
+      await Font.loadAsync({
+        'montserrat-regular': require('./assets/font/Montserrat-Regular.ttf'),
+        'montserrat-bold': require('./assets/font/Montserrat-Bold.ttf'),
+      });
+      setFontLoaded(true);
+      await SplashScreen.hideAsync();
+      setIsLoadingComplete(true);
+      await cacheImages(assetImages);
+    };
 
-  _handleFinishLoading = () => {
-    if (this.state.fontLoaded) {
-      this.setState({ isLoadingComplete: true });
-    }
-  };
-}
+    loadResourcesAsync();
+  }, []);
+
+  if (!isLoadingComplete) {
+    return null;
+  } else {
+    return (
+      <NavigationContainer>
+        <GalioProvider theme={nowTheme}>
+          <Block flex>
+            <Screens />
+          </Block>
+        </GalioProvider>
+      </NavigationContainer>
+    );
+  }
+};
+
+export default App;
